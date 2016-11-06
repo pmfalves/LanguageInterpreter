@@ -1,0 +1,9 @@
+decl
+	i = new 0
+	c = !i+1
+in
+	while (!i < 100) do
+		println !i;
+		i := !i+c 
+	end
+end;;

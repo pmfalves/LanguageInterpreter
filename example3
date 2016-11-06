@@ -1,0 +1,13 @@
+decl 
+	a = 2
+in 
+	decl
+    	myfun = fun x:int => x+a end
+	in 
+		decl 
+			a=4
+      	in 
+      		a + myfun(a)
+		end 
+	end
+end ;;
