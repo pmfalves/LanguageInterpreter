@@ -1,0 +1,401 @@
+PARSER_BEGIN(Parser)
+
+package parser;
+
+import ast.*;
+import java.util.LinkedList;
+import type.*;
+
+public class Parser {
+
+
+}
+
+PARSER_END(Parser)
+
+SKIP :
+{
+  " "
+| "\t"
+| "\r"
+| "\n"
+}
+
+TOKEN : 
+{
+< DECL : "decl" >
+|
+< IN : "in" >
+|
+< NEW : "new" >
+|
+< END : "end" >
+|
+< TRUE : "true" >
+|
+< FALSE : "false" >
+|
+< PRINT : "print" >
+|
+< PRINTLN : "println" >
+|
+< IF : "if" >
+|
+< THEN : "then" >
+|
+< ELSE : "else" >
+|
+< WHILE : "while" >
+|
+< DO : "do" >
+|
+< FUN : "fun" >
+|
+< INT : "int" >
+|
+< BOOL : "bool" >
+|
+< REF : "ref" >
+|
+< CMD : "cmd" >
+}
+
+
+TOKEN :
+{
+  < Id: ["a"-"z","A"-"Z"] ( ["a"-"z","A"-"Z","0"-"9"] )* >
+  |
+  < Num: (["0"-"9"])+ >
+  |
+  < LPAR : "(" >
+  |
+  < RPAR : ")" >
+  |
+  < ADD_OP : "+" >
+  |
+  < SUB_OP : "-" >
+  |
+  < MUL_OP : "*" >
+  |
+  < DIV_OP : "/" >
+  |
+   < GREATER : ">" >
+  |
+  < LESS : "<" >
+  |
+  < EQUALS : "==" >
+  |
+  < GE : ">=" >
+  |
+  < LE : "<=" >
+  |
+  < NOT_EQUAL : "!=" >
+  |
+  < AND : "&&" >
+  |
+  < OR : "||" >
+  |
+  < NOT : "~" >
+  |
+  < EQUALS_DEF : "=" >
+  |
+  < ASSIGN : ":=" >
+  |
+  < DEREF : "!" >
+  |
+  < EXP_END : ";;" >
+  |
+  < EXP_SEP : ";" >
+  |
+  < ARROW : "=>" >
+  |
+  < COMMA : "," >
+  |
+  < COLON : ":" >
+  |
+  < BRACKET_L : "{" >
+  |
+  < BRACKET_R : "}" >
+  |
+  < DOT : "." >
+  |
+  <QUESTION_MARK : "?" >
+}
+
+
+ASTNode Start():
+{
+	ASTNode e;
+}
+{
+  	
+  	e = SExp()
+  	
+  	<EXP_END> 
+  	{return e;}
+}
+
+ASTNode SExp():
+{
+	ASTNode e1, e2;
+}
+{
+	e1 = LAss()
+	(
+		<EXP_SEP> e2 = SExp()
+		{return new ASTComposite(e1,e2);}
+	)?
+	
+	{return e1;}
+	
+}
+
+ASTNode LAss():
+{
+	ASTNode e1, e2;
+	Token t;
+
+}
+{
+	e1 = LExp()
+	(
+		<ASSIGN> e2 = LExp()
+		{return new ASTAssign(e1,e2);}
+		
+	)?
+	
+	{return e1;}
+	
+}
+
+ASTNode LExp():
+{
+	ASTNode c, d;
+}
+{
+	
+	c = LTerm() 
+	(<OR> d = LExp() {return new ASTOr(c,d); } )?
+	{return c; }
+	|
+	<PRINT> c = LExp()
+	{return new ASTPrint(c);}
+	|
+	<PRINTLN> c = LExp()
+	{return new ASTPrint(c,true);}
+	
+}
+
+ASTNode LTerm():
+{
+	ASTNode e, c;
+}
+{
+	e = LFact()
+	(<AND> c = LTerm() {return new ASTAnd(e,c); } )?
+	
+	{return e; }
+	
+}
+
+ASTNode LFact():
+{
+	ASTNode e;
+}
+{
+	e = LCmp()
+	{return e; }
+	|
+	<NOT> e = LFact()
+	{ return new ASTNot(e); }
+}
+
+ASTNode LCmp():
+{
+	ASTNode e1, e2;
+}
+{
+	e1 = Exp() 
+	(
+		<GREATER> e2 = Exp()
+		{return new ASTGreater(e1,e2); }
+		|
+		<LESS> e2 = Exp()
+		{return new ASTLess(e1,e2); }
+		|
+		<EQUALS> e2 = Exp()
+		{return new ASTEquals(e1,e2); }
+		|
+		<NOT_EQUAL> e2 = Exp()
+		{return new ASTNotEqual(e1,e2); }
+		|
+		<GE> e2 = Exp()
+		{return new ASTGreaterEqual(e1,e2); }
+		|
+		<LE> e2 = Exp()
+		{return new ASTLessEqual(e1,e2); }
+	)?
+	
+	{return e1; }
+}
+
+ASTNode Exp():
+{
+	ASTNode t,e;
+}
+{
+ 	t = Term() 
+ 	(
+ 		<ADD_OP> e = Exp()
+ 		{return new ASTPlus(t,e); }
+ 		|
+ 		<SUB_OP> e = Exp()
+ 		{return new ASTSub(t,e); }
+ 	)?
+ 	{return t; }
+}
+
+ASTNode Term():
+{
+	ASTNode f,e;
+	Token t;
+}
+{
+ 	f = Fact() 
+ 	(
+ 		<MUL_OP> e = Term()
+ 		{return new ASTMult(f, e); }
+ 		|
+ 		<DIV_OP> e = Term()
+ 		{return new ASTDiv(f, e); }
+ 		|
+		<DOT> t = <Id>
+		{return new ASTField(f,t.image);}
+ 		
+  	)?
+  	{return f; }
+}
+
+ASTNode Fact():
+{
+	ASTNode e, e2, e3 = null;
+	Token t;
+}
+{
+	<DEREF> e = Fact()
+	{return new ASTDeref(e);}
+	|
+	<SUB_OP> e = Fact() 
+	{return new ASTNegative(e); }
+	|
+	<IF> e = SExp() <THEN> e2 = SExp() 
+	(<ELSE> e3 = SExp() )?
+	<END>
+	{return new ASTIf(e,e2,e3); }
+	|
+	<WHILE> e = SExp() <DO> e2 = SExp() <END>
+	{return new ASTWhile(e,e2); }
+	|
+	<DECL>
+	{
+		LinkedList<String> listIds = new LinkedList<String>();
+		LinkedList<ASTNode> initExps = new LinkedList<ASTNode>();
+	} 
+	( t=<Id> <EQUALS_DEF> e=LExp()  {listIds.add(t.image); initExps.add(e);})+ 
+	<IN>  e=SExp() 
+	<END>
+	{return new ASTDecl(listIds,initExps, e);}
+	|
+	e = SFact() (e = CFact(e) )?
+	{return e;}
+	|	
+	<NEW> e = Fact()
+	{return new ASTNew(e);}
+	|
+	<FUN>
+	{
+		LinkedList<String> args = new LinkedList<String>();
+		LinkedList<Type> types = new LinkedList<Type>();
+		Type ty;
+	} 
+	(t=<Id> <COLON> ty = Type() {args.add(t.image); types.add(ty); } (<COMMA> t=<Id> <COLON> ty = Type() {args.add(t.image); types.add(ty); })* )?
+	<ARROW> e = SExp() <END>
+	{return new ASTFunction(args, types, e);}
+	|
+	<BRACKET_L> 
+	{LinkedList<String> fields = new LinkedList<String>(); LinkedList<ASTNode> vExps = new LinkedList<ASTNode>();}
+	t=<Id> <EQUALS_DEF> e=LExp() {fields.add(t.image); vExps.add(e); } (<COMMA> t=<Id> <EQUALS_DEF> e=LExp() {fields.add(t.image); vExps.add(e); })*
+	<BRACKET_R>
+	{return new ASTRecord(fields, vExps); }
+}
+
+ASTNode SFact():
+{
+	Token t;
+	ASTNode e;
+}
+{
+	t = <Num> 
+	{return new ASTNum(Integer.parseInt(t.image));}
+	| 
+	t = <Id> 
+	{return new ASTIdentifier(t.image);}
+	| 
+	<LPAR> e = SExp() <RPAR>  
+	{return e;} 
+	| 
+	<TRUE>
+	{return new ASTLiteral(true); }
+	| 
+	<FALSE>
+	{return new ASTLiteral(false); }
+}
+
+ASTNode CFact(ASTNode sfact):
+{
+	ASTNode e, e2;
+}
+{
+	<LPAR>
+ 		{LinkedList<ASTNode> args = new LinkedList<ASTNode>();}
+ 		(e = LExp(){args.add(e);} (<COMMA> e = LExp(){args.add(e);})* )?
+ 	<RPAR>
+ 	{return new ASTApply(sfact,args);}
+ 	|
+ 	<QUESTION_MARK> e = SExp() <COLON> e2 = Fact()
+ 	{return new ASTConditionalValue(sfact, e,e2);}
+
+}
+
+Type Type():
+{
+	Type ty;
+	Token tok;
+}
+{
+	<BOOL> 
+	{return new TypeBool();}
+	| 
+	<INT> 
+	{return new TypeInt();}
+	| 
+	<REF> ty = Type() 
+	{return new TypeReference(ty);}
+	|
+	<CMD>
+	{return new TypeCmd(); }
+	|
+	<LPAR> 
+	{LinkedList<Type> types = new LinkedList<Type>();}
+	(ty = Type() { types.add(ty); } (<COMMA> ty = Type() {types.add(ty); })* )?
+	<ARROW> ty = Type() 
+	<RPAR>
+	{return new TypeFunction(types,ty); }
+	|
+	<BRACKET_L> 
+	{LinkedList<String> fields = new LinkedList<String>(); LinkedList<Type> types = new LinkedList<Type>();}
+	tok=<Id> <COLON> ty = Type() {fields.add(tok.image); types.add(ty); } (<COMMA> tok=<Id> <COLON> ty = Type() {fields.add(tok.image); types.add(ty); })*
+	<BRACKET_R>
+	{return new TypeRecord(fields, types); }
+	
+}
